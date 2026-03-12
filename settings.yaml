@@ -1,0 +1,185 @@
+model-settings:
+  prediction-threshold: 0.23
+  model-name: 'ViT-B/32'
+  device: 'cpu'
+
+people-counter-settings:
+  # YOLOv8 nano — fastest variant, auto-downloads yolov8n.pt on first run (~6MB)
+  # Only detects class 0 (person) — ignores everything else for speed
+  enabled: true
+  model: 'yolov8n.pt'
+  confidence: 0.45          # person detection confidence threshold
+  # Alert if headcount exceeds this value (0 = disabled)
+  crowd-alert-threshold: 10
+
+label-settings:
+  labels:
+    # ── NORMAL / safe ─────────────────────────────────────────────────────────
+    # Must explicitly list safe look-alikes so CLIP has competing embeddings.
+    # Without 'two people shaking hands', any physical contact can score near
+    # 'fight on a street' in cosine space — causing false positives.
+    - 'people walking on a street'
+    - 'buildings'
+    - 'road'
+    - 'cars on a road'
+    - 'car parking area'
+    - 'cars'
+    - 'office environment'
+    - 'office corridor'
+    - 'people talking'
+    - 'people walking in office'
+    - 'person walking in office'
+    - 'group of people'
+    - 'two people shaking hands'         # safe look-alike: prevents handshake → violence
+    - 'people hugging as a greeting'     # safe look-alike: prevents hug → violence
+    - 'person sitting at a desk'
+    - 'person doing yoga or stretching'  # safe look-alike: prevents yoga → fall
+    - 'person sleeping in bed'           # safe look-alike: prevents lying down → fall
+    - 'athletes playing sport safely'    # safe look-alike: prevents sport contact → violence
+    - 'person cooking in a kitchen'      # safe look-alike: prevents kitchen knife → weapon
+    - 'chef holding a kitchen knife'     # safe look-alike: kitchen context knife
+    - 'person using a lighter or candle' # safe look-alike: small flame → fire
+
+    # ── VIOLENCE ──────────────────────────────────────────────────────────────
+    - 'fight on a street'
+    - 'street violence'
+    - 'violence in office'
+    - 'people fighting and punching each other'
+    - 'person hitting or attacking another person'
+    - 'person being choked or strangled'
+    - 'crowd brawl and mob violence'
+    - 'person kicking another person aggressively'
+
+    # ── FALL ──────────────────────────────────────────────────────────────────
+    - 'person falling to the ground'
+    - 'person who has collapsed on the floor'
+    - 'person slipping and falling'
+    - 'elderly person who has fallen down'
+    - 'person lying motionless on the ground'
+    - 'person who has fainted and fallen over'
+    - 'person sprawled on the floor after a fall'
+
+    # ── INJURY ────────────────────────────────────────────────────────────────
+    - 'person clutching their body in severe pain'
+    - 'injured person bleeding and unable to stand'
+    - 'person writhing in pain on the ground'
+    - 'person in medical distress needing emergency help'
+    - 'person with visible wounds and injuries'
+
+    # ── WEAPON — GUN ──────────────────────────────────────────────────────────
+    # CLIP prompt research: visual specificity improves accuracy. Describing the
+    # *posture* ("raised", "pointed", "aimed") is more reliable than just "gun"
+    # since CLIP was trained on web images with varied contexts.
+    - 'person holding a gun and pointing it at someone'
+    - 'person aiming a firearm at another person'
+    - 'person with a pistol or handgun raised in threat'
+    - 'armed person with a rifle in a public space'
+    - 'person brandishing a firearm aggressively'
+    - 'person with a concealed weapon visible under jacket'
+    - 'robbery with a gun'
+
+    # ── WEAPON — KNIFE ────────────────────────────────────────────────────────
+    # Per CCTV weapon detection research: key visual signal is the *threatening
+    # posture* (raised arm, pointed toward another person) not just the object.
+    - 'person holding a knife in a threatening manner'
+    - 'person threatening someone with a knife or blade'
+    - 'knife attack in progress'
+    - 'person stabbing or slashing with a blade'
+    - 'person brandishing a large knife aggressively'
+
+    # ── FIRE / SMOKE ──────────────────────────────────────────────────────────
+    - 'fire on a street'
+    - 'fire in office'
+    - 'large fire and smoke in a building'
+    - 'room engulfed in flames'
+    - 'fire spreading rapidly in a public area'
+    - 'car on fire'
+    - 'thick black smoke filling a corridor'
+
+    # ── VANDALISM ─────────────────────────────────────────────────────────────
+    - 'person smashing or breaking a window'
+    - 'person spray painting graffiti on a wall'
+    - 'person destroying or damaging property'
+    - 'group vandalising vehicles or buildings'
+    - 'car crash'
+
+    # ── SUSPICIOUS BEHAVIOUR ──────────────────────────────────────────────────
+    # Describes covert/furtive behaviour patterns visible to CCTV cameras.
+    # These complement weapon detection by catching pre-incident indicators.
+    - 'person acting suspiciously and looking around nervously'
+    - 'person loitering in restricted or unusual area'
+    - 'person attempting to conceal object under clothing'
+    - 'person breaking into a vehicle or building'
+    - 'person tampering with security equipment or cameras'
+
+  default-label: 'Unknown'
+
+  # Maps each label → alert category.
+  # Any label NOT in category-map is treated as 'normal'.
+  category-map:
+    violence:
+      - 'fight on a street'
+      - 'street violence'
+      - 'violence in office'
+      - 'people fighting and punching each other'
+      - 'person hitting or attacking another person'
+      - 'person being choked or strangled'
+      - 'crowd brawl and mob violence'
+      - 'person kicking another person aggressively'
+    fall:
+      - 'person falling to the ground'
+      - 'person who has collapsed on the floor'
+      - 'person slipping and falling'
+      - 'elderly person who has fallen down'
+      - 'person lying motionless on the ground'
+      - 'person who has fainted and fallen over'
+      - 'person sprawled on the floor after a fall'
+    injury:
+      - 'person clutching their body in severe pain'
+      - 'injured person bleeding and unable to stand'
+      - 'person writhing in pain on the ground'
+      - 'person in medical distress needing emergency help'
+      - 'person with visible wounds and injuries'
+    weapon-gun:
+      - 'person holding a gun and pointing it at someone'
+      - 'person aiming a firearm at another person'
+      - 'person with a pistol or handgun raised in threat'
+      - 'armed person with a rifle in a public space'
+      - 'person brandishing a firearm aggressively'
+      - 'person with a concealed weapon visible under jacket'
+      - 'robbery with a gun'
+    weapon-knife:
+      - 'person holding a knife in a threatening manner'
+      - 'person threatening someone with a knife or blade'
+      - 'knife attack in progress'
+      - 'person stabbing or slashing with a blade'
+      - 'person brandishing a large knife aggressively'
+    fire-smoke:
+      - 'fire on a street'
+      - 'fire in office'
+      - 'large fire and smoke in a building'
+      - 'room engulfed in flames'
+      - 'fire spreading rapidly in a public area'
+      - 'car on fire'
+      - 'thick black smoke filling a corridor'
+    vandalism:
+      - 'person smashing or breaking a window'
+      - 'person spray painting graffiti on a wall'
+      - 'person destroying or damaging property'
+      - 'group vandalising vehicles or buildings'
+      - 'car crash'
+    suspicious:
+      - 'person acting suspiciously and looking around nervously'
+      - 'person loitering in restricted or unusual area'
+      - 'person attempting to conceal object under clothing'
+      - 'person breaking into a vehicle or building'
+      - 'person tampering with security equipment or cameras'
+
+video-settings:
+  inference-every-n-frames: 5
+
+video-sources:
+  - id: 0
+    name: "Internal Webcam"
+  - id: 1
+    name: "CCTV - Entrance"
