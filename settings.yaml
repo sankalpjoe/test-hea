@@ -181,5 +181,7 @@ video-settings:
 video-sources:
   - id: 0
     name: "Internal Webcam"
+    source: 0
   - id: 1
     name: "CCTV - Entrance"
+    source: "rtsp://your-ip-here:554/stream"
