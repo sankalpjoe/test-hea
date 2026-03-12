@@ -1,5 +1,8 @@
 label-settings:
   category-map:
+  nomral:
+  - 'person tapping a colleague on the shoulder'
+- 'two people playfully wrestling or joking around'
     fall:
     - person falling to the ground
     - person who has collapsed on the floor
@@ -35,6 +38,13 @@ label-settings:
     - group vandalising vehicles or buildings
     - car crash
     violence:
+    - 'person pushing or shoving another person aggressively'
+    - 'person grabbing and pushing someone against a wall'
+    - 'person shoved to the ground'
+    - 'two people in a heated physical confrontation'
+    - 'person violently grabbing another persons collar'
+    - 'person throwing another person'
+    - 'aggressive physical altercation between two people'
     - fight on a street
     - street violence
     - violence in office
@@ -59,6 +69,13 @@ label-settings:
     - person brandishing a large knife aggressively
   default-label: Unknown
   labels:
+  - 'person pushing or shoving another person aggressively'
+- 'person grabbing and pushing someone against a wall'
+- 'person shoved to the ground'
+- 'two people in a heated physical confrontation'
+- 'person violently grabbing another persons collar'
+- 'person throwing another person'
+- 'aggressive physical altercation between two people'
   - people walking on a street
   - buildings
   - road
