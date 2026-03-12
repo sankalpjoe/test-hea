@@ -1,8 +1,5 @@
 label-settings:
   category-map:
-  nomral:
-  - 'person tapping a colleague on the shoulder'
-- 'two people playfully wrestling or joking around'
     fall:
     - person falling to the ground
     - person who has collapsed on the floor
@@ -38,13 +35,6 @@ label-settings:
     - group vandalising vehicles or buildings
     - car crash
     violence:
-    - 'person pushing or shoving another person aggressively'
-    - 'person grabbing and pushing someone against a wall'
-    - 'person shoved to the ground'
-    - 'two people in a heated physical confrontation'
-    - 'person violently grabbing another persons collar'
-    - 'person throwing another person'
-    - 'aggressive physical altercation between two people'
     - fight on a street
     - street violence
     - violence in office
@@ -69,13 +59,6 @@ label-settings:
     - person brandishing a large knife aggressively
   default-label: Unknown
   labels:
-  - 'person pushing or shoving another person aggressively'
-- 'person grabbing and pushing someone against a wall'
-- 'person shoved to the ground'
-- 'two people in a heated physical confrontation'
-- 'person violently grabbing another persons collar'
-- 'person throwing another person'
-- 'aggressive physical altercation between two people'
   - people walking on a street
   - buildings
   - road
@@ -153,9 +136,12 @@ model-settings:
 people-counter-settings:
   enabled: true
   model: yolov8m.pt
+  pose-model: yolov8n-pose.pt
   confidence: 0.25
   imgsz: 1280
+  iou: 0.35
   crowd-alert-threshold: 30
+  device: cpu
 video-settings:
   inference-every-n-frames: 5
 video-sources:
@@ -164,4 +150,37 @@ video-sources:
   source: 0
 - id: 1
   name: CCTV - Entrance
-  source: xxxx
+  source: wss://77.291.09.77/camera/stream
+logging-settings:
+  interval-minutes: 5
+  incident-cooldown-seconds: 30
+  log-dir: logs
+scenario-settings:
+  mode: office
+  min-keypoints: 4
+  temporal-frames: 15
+  static-learn-frames: 150
+  crush-density-threshold: 8
+  panic-velocity-threshold: 25
+  sahi:
+    enabled: false
+    slice-height: 640
+    slice-width: 640
+    overlap-ratio: 0.2
+  perspective-scale:
+    bands:
+    - y-min: 0.0
+      y-max: 0.33
+      min-height-px: 30
+      max-height-px: 120
+    - y-min: 0.33
+      y-max: 0.66
+      min-height-px: 60
+      max-height-px: 240
+    - y-min: 0.66
+      y-max: 1.0
+      min-height-px: 100
+      max-height-px: 480
+zones:
+  excluded: []
+  restricted: []
