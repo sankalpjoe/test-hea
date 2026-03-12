@@ -30,73 +30,7 @@ CATEGORY_PRIORITY = [
 ]
 
 
-class PeopleCounter:
-    """
-    Office-optimised headcount using YOLOv8.
-
-    Why nano fails in dense offices:
-      YOLOv8n (nano) was optimised for speed over accuracy. In a CCTV office
-      scene it struggles with three common conditions:
-        1. Seated people — only head/shoulders visible above desk
-        2. Partial occlusion — monitors, partitions, other people blocking torso
-        3. Overhead angle — CCTV cameras shoot top-down, bodies appear foreshortened
-
-    Fixes applied:
-      1. Model: yolov8m (medium) — 3x more parameters than nano, much better
-         at partial occlusion and non-standard body orientations. Adds ~80ms
-         on CPU but that's fine since inference runs in a background thread.
-      2. Confidence: lowered from 0.45 → 0.25 — seated/occluded people
-         score lower confidence even when correctly detected. 0.45 drops them.
-      3. imgsz=1280: YOLO default is 640px. Upscaling to 1280 before inference
-         makes seated people (who appear small in CCTV frames) larger relative
-         to the detection grid — dramatically improves small/distant detections.
-      4. iou=0.4: lower IoU threshold reduces missed detections in dense crowds
-         where bounding boxes legitimately overlap (people sitting close together).
-      5. augment=True: test-time augmentation — runs inference on flipped/scaled
-         versions of the frame and merges results. Best single setting for
-         improving recall on partially visible people. ~30% slower but worth it.
-    """
-
-    def __init__(self, model_path: str = 'yolov8m.pt', confidence: float = 0.25,
-                 imgsz: int = 1280, device: str = 'cpu'):
-        try:
-            from ultralytics import YOLO
-            self.yolo    = YOLO(model_path)
-            self.conf    = confidence
-            self.imgsz   = imgsz
-            self.device  = device
-            self.enabled = True
-            print(f'[INFO] YOLOv8 people counter ready — model={model_path} ')
-            print(f'       conf={confidence}  imgsz={imgsz}  (office-optimised)')
-        except ImportError:
-            print('[WARN] ultralytics not installed — people counter disabled.')
-            print('       Run: pip install ultralytics')
-            self.enabled = False
-
-    def count(self, frame_bgr: np.ndarray) -> tuple[int, list[tuple]]:
-        """
-        Returns (headcount, bboxes).
-        bboxes: list of (x1, y1, x2, y2) for each detected person.
-        """
-        if not self.enabled:
-            return 0, []
-
-        results = self.yolo(
-            frame_bgr,
-            classes=[0],       # class 0 = person only — skip chairs, desks etc
-            conf=self.conf,
-            imgsz=self.imgsz,  # 1280 vs default 640: seats/heads appear larger
-            iou=0.4,           # lower IoU: tolerate overlapping boxes in crowds
-            augment=True,      # test-time augment: best recall for partial bodies
-            verbose=False,
-            device=self.device,
-        )
-        boxes = []
-        for r in results:
-            for box in r.boxes:
-                x1, y1, x2, y2 = map(int, box.xyxy[0].tolist())
-                boxes.append((x1, y1, x2, y2))
-        return len(boxes), boxes
+from people_counter import PeopleCounter, CountResult
 
 
 class Model:
@@ -134,15 +68,9 @@ class Model:
         # ── People counter setup ──────────────────────────────────────────────
         counter_enabled    = ps.get('enabled', True)
         self.crowd_thresh  = ps.get('crowd-alert-threshold', 0)
-        if counter_enabled:
-            self.counter = PeopleCounter(
-                model_path=ps.get('model', 'yolov8m.pt'),
-                confidence=ps.get('confidence', 0.25),
-                imgsz=ps.get('imgsz', 1280),
-                device=str(self.device),
-            )
-        else:
-            self.counter = None
+        # PeopleCounter now receives the full settings dict so it can
+        # read scenario, SAHI, zones, pose, and temporal config itself.
+        self.counter = PeopleCounter(self.settings) if counter_enabled else None
 
         print(f'[INFO] CLIP ready — {len(self.labels)} labels across '
               f'{len(set(self._label_to_cat.values()))} categories')
@@ -211,23 +139,27 @@ class Model:
             label_text = self.default_label
             category   = 'Unknown'
 
-        # ── 2. YOLOv8 headcount ───────────────────────────────────────────────
-        headcount, person_boxes = (0, [])
+        # ── 2. YOLOv8 headcount + behavioral analytics ──────────────────────
+        cr = None
         if self.counter:
-            # YOLOv8 needs BGR — image is passed in as RGB from app.py
             bgr = cv2.cvtColor(image, cv2.COLOR_RGB2BGR)
-            headcount, person_boxes = self.counter.count(bgr)
-
-        crowd_alert = (self.crowd_thresh > 0 and headcount > self.crowd_thresh)
+            cr  = self.counter.count_full(bgr)
 
         return {
-            'label':        label_text,
-            'category':     category,
-            'confidence':   confidence,
-            'is_alert':     category not in ('normal', 'Unknown'),
-            'headcount':    headcount,
-            'person_boxes': person_boxes,
-            'crowd_alert':  crowd_alert,
+            'label':           label_text,
+            'category':        category,
+            'confidence':      confidence,
+            'is_alert':        category not in ('normal', 'Unknown'),
+            # ── People counter fields ────────────────────────────────────────
+            'headcount':       cr.headcount       if cr else 0,
+            'person_boxes':    cr.confirmed_boxes if cr else [],
+            'rejected_boxes':  cr.rejected_boxes  if cr else [],
+            'crowd_alert':     cr.crowd_alert      if cr else False,
+            'crush_zones':     cr.crush_zones      if cr else [],
+            'panic_detected':  cr.panic_detected   if cr else False,
+            'flow_vectors':    cr.flow_vectors      if cr else [],
+            'zone_alerts':     cr.zone_alerts       if cr else [],
+            'scenario':        cr.scenario          if cr else 'office',
         }
 
     @staticmethod
