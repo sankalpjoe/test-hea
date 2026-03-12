@@ -41,6 +41,7 @@
             font-weight: 700;
             background: linear-gradient(to right, #60a5fa, #a855f7);
             -webkit-background-clip: text;
+            background-clip: text;
             -webkit-text-fill-color: transparent;
             margin-bottom: 0.5rem;
         }
@@ -115,6 +116,76 @@
             font-family: monospace;
         }
 
+        /* --- New Form Styles --- */
+        .add-source-container {
+            max-width: 1400px;
+            margin: 0 auto 3rem auto;
+            background-color: var(--card-bg);
+            padding: 1.5rem;
+            border-radius: 1rem;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .add-source-container h2 {
+            font-size: 1.25rem;
+            margin-bottom: 1rem;
+            color: var(--accent-color);
+        }
+
+        .source-form {
+            display: flex;
+            gap: 1rem;
+            flex-wrap: wrap;
+        }
+
+        .form-group {
+            flex: 1;
+            min-width: 250px;
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+
+        .form-group label {
+            font-size: 0.875rem;
+            color: var(--text-muted);
+        }
+
+        .form-group input {
+            background-color: var(--bg-color);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            color: var(--text-color);
+            padding: 0.75rem 1rem;
+            border-radius: 0.5rem;
+            font-size: 1rem;
+            transition: border-color 0.2s ease;
+        }
+
+        .form-group input:focus {
+            outline: none;
+            border-color: var(--accent-color);
+        }
+
+        .add-btn {
+            align-self: flex-end;
+            background: linear-gradient(135deg, #3b82f6, #8b5cf6);
+            color: white;
+            border: none;
+            padding: 0.75rem 1.5rem;
+            border-radius: 0.5rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: opacity 0.2s ease, transform 0.1s ease;
+        }
+
+        .add-btn:hover {
+            opacity: 0.9;
+        }
+
+        .add-btn:active {
+            transform: scale(0.98);
+        }
+
         @media (max-width: 640px) {
             body {
                 padding: 1rem;
@@ -131,6 +202,22 @@
     <div class="header">
         <h1>SafetyMonitor AI</h1>
         <p>Real-time Violence & Threat Detection Suite</p>
+    </div>
+
+    <div class="add-source-container">
+        <h2>Add Live CCTV Feed</h2>
+        <form action="/add_source" method="POST" class="source-form">
+            <div class="form-group">
+                <label for="name">Camera Name</label>
+                <input type="text" id="name" name="name" placeholder="e.g. Backyard CCTV" required>
+            </div>
+            <div class="form-group">
+                <label for="source">Source (IP Address / RTSP URL / Index)</label>
+                <input type="text" id="source" name="source" placeholder="e.g. rtsp://admin:pass@192.168.1.10:554"
+                    required>
+            </div>
+            <button type="submit" class="add-btn">Connect Stream</button>
+        </form>
     </div>
 
     <div class="dashboard-grid">

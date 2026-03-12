@@ -1,4 +1,4 @@
-# Scenario Detection App
+# Violence Detection App
 
 This application monitors video streams and detects violent or harmful activities in real-time using OpenAI's CLIP, OpenCV, and PyTorch.
 

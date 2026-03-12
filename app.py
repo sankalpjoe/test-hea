@@ -11,7 +11,13 @@ model = Model()
 # Load sources from settings.yaml
 video_sources = model.settings.get('video-sources', [])
 if not video_sources:
-    video_sources = [{'id': 0, 'name': 'Main Webcam'}]
+    video_sources = [{'id': '0', 'name': 'Main Webcam', 'source': 0}]
+else:
+    # Standardize sources to ensure they have a 'source' key (index or URL)
+    for s in video_sources:
+        s['id'] = str(s['id'])
+        if 'source' not in s:
+            s['source'] = int(s['id']) if s['id'].isdigit() else s['id']
 
 INFER_EVERY = model.settings.get('video-settings', {}).get('inference-every-n-frames', 5)
 
@@ -155,13 +161,18 @@ class VideoProcessor:
 
 _processors: dict[int, VideoProcessor] = {}
 
-def get_processor(source_id: int) -> VideoProcessor:
+def get_processor(source_id: str) -> VideoProcessor:
     if source_id not in _processors:
-        _processors[source_id] = VideoProcessor(source_id)
+        # Find the actual source (index or URL) from our list
+        source_config = next((s for s in video_sources if s['id'] == source_id), None)
+        if not source_config:
+            raise ValueError(f"Source ID {source_id} not found")
+        
+        _processors[source_id] = VideoProcessor(source_config['source'])
     return _processors[source_id]
 
 
-def generate_frames(source_id: int):
+def generate_frames(source_id: str):
     processor = get_processor(source_id)
     while not processor._stopped:
         frame, result = processor.get_frame()
@@ -177,13 +188,34 @@ def generate_frames(source_id: int):
 def index():
     return render_template('index.html', video_sources=video_sources)
 
-@app.route('/video_feed/<int:source_id>')
+@app.route('/video_feed/<source_id>')
 def video_feed(source_id):
     try:
-        return Response(generate_frames(source_id),
+        return Response(generate_frames(str(source_id)),
                         mimetype='multipart/x-mixed-replace; boundary=frame')
-    except ValueError as e:
+    except Exception as e:
         return str(e), 404
+
+@app.route('/add_source', methods=['POST'])
+def add_source():
+    from flask import request, redirect, url_for
+    name = request.form.get('name')
+    source = request.form.get('source')
+    
+    if not name or not source:
+        return "Missing name or source", 400
+    
+    # Try to convert source to int if it's a digit (webcam index)
+    actual_source = int(source) if source.isdigit() else source
+    
+    source_id = str(len(video_sources))
+    video_sources.append({
+        'id': source_id,
+        'name': name,
+        'source': actual_source
+    })
+    
+    return redirect(url_for('index'))
 
 
 if __name__ == '__main__':
