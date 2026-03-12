@@ -32,26 +32,42 @@ CATEGORY_PRIORITY = [
 
 class PeopleCounter:
     """
-    Lightweight headcount using YOLOv8 nano (class 0 = person only).
+    Office-optimised headcount using YOLOv8.
 
-    Why YOLOv8n for counting instead of CLIP:
-      CLIP is a scene classifier — it outputs one label for the whole image.
-      It cannot count individuals. YOLOv8n is an object detector that draws
-      bounding boxes around each person separately, giving an exact count.
-      The 'nano' variant is ~6MB and runs ~30ms/frame on CPU — fast enough
-      to run alongside CLIP in the same inference thread without adding
-      noticeable latency.
+    Why nano fails in dense offices:
+      YOLOv8n (nano) was optimised for speed over accuracy. In a CCTV office
+      scene it struggles with three common conditions:
+        1. Seated people — only head/shoulders visible above desk
+        2. Partial occlusion — monitors, partitions, other people blocking torso
+        3. Overhead angle — CCTV cameras shoot top-down, bodies appear foreshortened
+
+    Fixes applied:
+      1. Model: yolov8m (medium) — 3x more parameters than nano, much better
+         at partial occlusion and non-standard body orientations. Adds ~80ms
+         on CPU but that's fine since inference runs in a background thread.
+      2. Confidence: lowered from 0.45 → 0.25 — seated/occluded people
+         score lower confidence even when correctly detected. 0.45 drops them.
+      3. imgsz=1280: YOLO default is 640px. Upscaling to 1280 before inference
+         makes seated people (who appear small in CCTV frames) larger relative
+         to the detection grid — dramatically improves small/distant detections.
+      4. iou=0.4: lower IoU threshold reduces missed detections in dense crowds
+         where bounding boxes legitimately overlap (people sitting close together).
+      5. augment=True: test-time augmentation — runs inference on flipped/scaled
+         versions of the frame and merges results. Best single setting for
+         improving recall on partially visible people. ~30% slower but worth it.
     """
 
-    def __init__(self, model_path: str = 'yolov8n.pt', confidence: float = 0.45,
-                 device: str = 'cpu'):
+    def __init__(self, model_path: str = 'yolov8m.pt', confidence: float = 0.25,
+                 imgsz: int = 1280, device: str = 'cpu'):
         try:
             from ultralytics import YOLO
-            self.yolo = YOLO(model_path)
-            self.conf = confidence
-            self.device = device
+            self.yolo    = YOLO(model_path)
+            self.conf    = confidence
+            self.imgsz   = imgsz
+            self.device  = device
             self.enabled = True
-            print(f'[INFO] YOLOv8 people counter ready (conf={confidence})')
+            print(f'[INFO] YOLOv8 people counter ready — model={model_path} ')
+            print(f'       conf={confidence}  imgsz={imgsz}  (office-optimised)')
         except ImportError:
             print('[WARN] ultralytics not installed — people counter disabled.')
             print('       Run: pip install ultralytics')
@@ -67,8 +83,11 @@ class PeopleCounter:
 
         results = self.yolo(
             frame_bgr,
-            classes=[0],            # 0 = person — skip all other classes
+            classes=[0],       # class 0 = person only — skip chairs, desks etc
             conf=self.conf,
+            imgsz=self.imgsz,  # 1280 vs default 640: seats/heads appear larger
+            iou=0.4,           # lower IoU: tolerate overlapping boxes in crowds
+            augment=True,      # test-time augment: best recall for partial bodies
             verbose=False,
             device=self.device,
         )
@@ -117,8 +136,9 @@ class Model:
         self.crowd_thresh  = ps.get('crowd-alert-threshold', 0)
         if counter_enabled:
             self.counter = PeopleCounter(
-                model_path=ps.get('model', 'yolov8n.pt'),
-                confidence=ps.get('confidence', 0.45),
+                model_path=ps.get('model', 'yolov8m.pt'),
+                confidence=ps.get('confidence', 0.25),
+                imgsz=ps.get('imgsz', 1280),
                 device=str(self.device),
             )
         else:
