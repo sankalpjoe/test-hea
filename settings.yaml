@@ -150,7 +150,7 @@ video-sources:
   source: 0
 - id: 1
   name: CCTV - Entrance
-  source: wss://77.291.09.77/camera/stream
+  source: 
 logging-settings:
   interval-minutes: 5
   incident-cooldown-seconds: 30
