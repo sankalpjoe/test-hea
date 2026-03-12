@@ -7,6 +7,8 @@ from model import Model, CATEGORY_META
 from ws_stream import WebSocketStream
 
 app = Flask(__name__)
+# Show real exception messages instead of "stream error after headers sent"
+app.config['PROPAGATE_EXCEPTIONS'] = True
 model = Model()
 
 INFER_EVERY = model.settings.get('video-settings', {}).get('inference-every-n-frames', 5)
@@ -162,15 +164,24 @@ def get_processor(source_id: int) -> VideoProcessor:
 
 
 def generate_frames(source_id: int):
-    processor = get_processor(source_id)
+    try:
+        processor = get_processor(source_id)
+    except ValueError as e:
+        print(f'[ERROR] Could not open source {source_id}: {e}')
+        return
+
     while not processor._stopped:
-        frame, result = processor.get_frame()
-        if frame is None:
-            continue
-        display = draw_overlay(frame.copy(), result)
-        _, buffer = cv2.imencode('.jpg', display)
-        yield (b'--frame\r\n'
-               b'Content-Type: image/jpeg\r\n\r\n' + buffer.tobytes() + b'\r\n')
+        try:
+            frame, result = processor.get_frame()
+            if frame is None:
+                continue
+            display = draw_overlay(frame.copy(), result)
+            _, buffer = cv2.imencode('.jpg', display)
+            yield (b'--frame\r\n'
+                   b'Content-Type: image/jpeg\r\n\r\n' + buffer.tobytes() + b'\r\n')
+        except Exception as e:
+            print(f'[ERROR] Frame error: {e}')
+            break
 
 
 @app.route('/')
