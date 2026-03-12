@@ -4,20 +4,14 @@ model-settings:
   device: 'cpu'
 
 people-counter-settings:
-  # YOLOv8 nano — fastest variant, auto-downloads yolov8n.pt on first run (~6MB)
-  # Only detects class 0 (person) — ignores everything else for speed
   enabled: true
   model: 'yolov8n.pt'
-  confidence: 0.45          # person detection confidence threshold
-  # Alert if headcount exceeds this value (0 = disabled)
+  confidence: 0.45
   crowd-alert-threshold: 10
 
 label-settings:
   labels:
     # ── NORMAL / safe ─────────────────────────────────────────────────────────
-    # Must explicitly list safe look-alikes so CLIP has competing embeddings.
-    # Without 'two people shaking hands', any physical contact can score near
-    # 'fight on a street' in cosine space — causing false positives.
     - 'people walking on a street'
     - 'buildings'
     - 'road'
@@ -30,15 +24,15 @@ label-settings:
     - 'people walking in office'
     - 'person walking in office'
     - 'group of people'
-    - 'two people shaking hands'         # safe look-alike: prevents handshake → violence
-    - 'people hugging as a greeting'     # safe look-alike: prevents hug → violence
+    - 'two people shaking hands'
+    - 'people hugging as a greeting'
     - 'person sitting at a desk'
-    - 'person doing yoga or stretching'  # safe look-alike: prevents yoga → fall
-    - 'person sleeping in bed'           # safe look-alike: prevents lying down → fall
-    - 'athletes playing sport safely'    # safe look-alike: prevents sport contact → violence
-    - 'person cooking in a kitchen'      # safe look-alike: prevents kitchen knife → weapon
-    - 'chef holding a kitchen knife'     # safe look-alike: kitchen context knife
-    - 'person using a lighter or candle' # safe look-alike: small flame → fire
+    - 'person doing yoga or stretching'
+    - 'person sleeping in bed'
+    - 'athletes playing sport safely'
+    - 'person cooking in a kitchen'
+    - 'chef holding a kitchen knife'
+    - 'person using a lighter or candle'
 
     # ── VIOLENCE ──────────────────────────────────────────────────────────────
     - 'fight on a street'
@@ -67,9 +61,6 @@ label-settings:
     - 'person with visible wounds and injuries'
 
     # ── WEAPON — GUN ──────────────────────────────────────────────────────────
-    # CLIP prompt research: visual specificity improves accuracy. Describing the
-    # *posture* ("raised", "pointed", "aimed") is more reliable than just "gun"
-    # since CLIP was trained on web images with varied contexts.
     - 'person holding a gun and pointing it at someone'
     - 'person aiming a firearm at another person'
     - 'person with a pistol or handgun raised in threat'
@@ -79,8 +70,6 @@ label-settings:
     - 'robbery with a gun'
 
     # ── WEAPON — KNIFE ────────────────────────────────────────────────────────
-    # Per CCTV weapon detection research: key visual signal is the *threatening
-    # posture* (raised arm, pointed toward another person) not just the object.
     - 'person holding a knife in a threatening manner'
     - 'person threatening someone with a knife or blade'
     - 'knife attack in progress'
@@ -104,8 +93,6 @@ label-settings:
     - 'car crash'
 
     # ── SUSPICIOUS BEHAVIOUR ──────────────────────────────────────────────────
-    # Describes covert/furtive behaviour patterns visible to CCTV cameras.
-    # These complement weapon detection by catching pre-incident indicators.
     - 'person acting suspiciously and looking around nervously'
     - 'person loitering in restricted or unusual area'
     - 'person attempting to conceal object under clothing'
@@ -114,8 +101,6 @@ label-settings:
 
   default-label: 'Unknown'
 
-  # Maps each label → alert category.
-  # Any label NOT in category-map is treated as 'normal'.
   category-map:
     violence:
       - 'fight on a street'
@@ -181,7 +166,30 @@ video-settings:
 video-sources:
   - id: 0
     name: "Internal Webcam"
-    source: 0
+    source: 0                                      # integer = local webcam index
+
   - id: 1
     name: "CCTV - Entrance"
-    source: "rtsp://your-ip-here:554/stream"
+    # ── HTTPS stream ────────────────────────────────────────────────────────
+    # cv2.VideoCapture accepts HTTP/HTTPS URLs natively via FFmpeg backend.
+    # Common HTTPS stream formats — use whichever your camera provides:
+    #
+    #   MJPEG (Motion JPEG):  most common for cheap IP cameras
+    #     source: "https://your-ip/mjpeg/stream"   or
+    #     source: "https://your-ip/video.mjpg"
+    #
+    #   HLS (M3U8):           used by cloud cameras, NVRs, Hikvision, Dahua
+    #     source: "https://your-ip/stream.m3u8"
+    #
+    #   MP4/H264 over HTTP:   some cameras expose a direct video URL
+    #     source: "https://your-ip/stream.mp4"
+    #
+    # If your camera requires login, embed credentials in the URL:
+    #     source: "https://username:password@your-ip/stream"
+    #
+    # Replace the URL below with your actual feed:
+    source: "https://your-camera-ip/stream"
+
+    # ── Optional: if your HTTPS stream requires custom HTTP headers ──────────
+    # (e.g. a Bearer token or API key — see app.py notes)
+    # auth-header: "Authorization: Bearer your-token-here"
