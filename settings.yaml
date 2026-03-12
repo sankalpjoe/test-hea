@@ -134,10 +134,11 @@ model-settings:
   model-name: ViT-B/32
   prediction-threshold: 0.23
 people-counter-settings:
-  confidence: 0.45
-  crowd-alert-threshold: 10
   enabled: true
-  model: yolov8n.pt
+  model: yolov8m.pt
+  confidence: 0.25
+  imgsz: 1280
+  crowd-alert-threshold: 30
 video-settings:
   inference-every-n-frames: 5
 video-sources:
@@ -146,4 +147,4 @@ video-sources:
   source: 0
 - id: 1
   name: CCTV - Entrance
-  source: wss://77.291.09.77/camera/stream
+  source: xxxx
